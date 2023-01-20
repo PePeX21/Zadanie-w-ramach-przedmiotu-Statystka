@@ -1,0 +1,109 @@
+---
+title: "Wypadki samochodowe - Paweł Matys"
+output:
+  html_document: default
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE) 
+library(dplyr)
+library(ggplot2)
+```
+
+
+# https://www.kaggle.com/prasannakm/car-crash-dataset
+ 
+## Statystyki opisowe
+
+```{r}
+CarCrash <- read.csv("test-new.csv")
+CarCrash <- na.omit(CarCrash)
+ wiek <- CarCrash$yearVeh
+ smierc <- CarCrash$dead
+ predkosc <- CarCrash$dvcat
+ pasy <- CarCrash$seatbelt
+ poduszka <- CarCrash$airbag
+ wiekKierowcy <- CarCrash$ageOFocc
+ plec <- CarCrash$sex
+ 
+hist(wiek, col="red",xlab="Wiek samochodu",ylab="Liczba wypadków",main = "Średnia liczba wypadków ")
+
+ggplot(data = CarCrash, aes(x = predkosc, fill = smierc)) + geom_bar(position= 'dodge') + labs(title="Śmiertelność wypadków w zależności od prędkości", subtitle = " dla zebranych 8651 obserwacji" , x= "Prędkość samochodu w km/h", y = "Częstość")
+
+qplot(x = smierc, y=wiek, color = smierc, geom = 'boxplot', data = CarCrash, main = "Śmiertelność a wiek samochodu", xlab = "Śmiertelność", ylab = " Rok produkcji")
+
+ggplot(data = CarCrash, aes(x = pasy, fill = smierc)) + geom_bar(position= 'dodge') + labs(title="Śmiertelność wypadków w zależności od zapięcia pasów", subtitle = " dla zebranych 8651 obserwacji" , x= "Zapięte badź nie pasy", y = "Częstość")
+
+ggplot(data = CarCrash, aes(x = poduszka, fill = smierc)) + geom_bar(position= 'dodge') + labs(title="Śmiertelność wypadków w zależności od uruchomienia poduszki powietrznej", subtitle = " dla zebranych 8651 obserwacji" , x= "Poduszka się uróchomiła", y = "Częstość")
+
+ ggplot(data = CarCrash, aes(x = CarCrash$sex, fill = smierc)) + geom_bar(position= 'dodge') + labs(title="Liczba wypadków i smiertelnosć w zależnosci od płci", subtitle = " dla zebranych 8651 obserwacji" , x= "Płeć ", y = "Częstość")
+
+```
+
+
+# Statystyka testowa
+
+# Hipoteza 1
+
+h0: Wiek samochodów w grupie osób, które zgineły w wypadkach jest taki sam lub niższy jak w grupie osób, które przeżyły wypadek.
+
+hA: Wiek samochodów w grupie osób, które zginęły w wypadkach jest wyższy (rocznik jest starszy), niż w grupie osób, które przeżyły wypadek.
+
+```{r}
+CarCrashDeath <- filter(CarCrash, smierc == "dead")
+CarCrashAlive <- filter(CarCrash, smierc == "alive")
+t.test(CarCrashDeath$yearVeh, CarCrashAlive$yearVeh, alternative = "less" )
+```
+
+W celu zweryfikowania hipotezy użyłem tetstu t Studenta z poprawką Welscha (dzięki tej poprawce wariancja w grupach nie musi być równa). Grupy nie są równoliczne, dlatego postanowiłem użyć dodatkowo testu nieparametrycznego, który w tej sytuacji wydaje się lepszy. Liczba obserwacji w grupach jest w stosunku 20:1. Poniżej test sumy rank Wilcoxona.
+
+
+```{r}
+wilcox.test(CarCrashDeath$yearVeh, CarCrashAlive$yearVeh, alternative = "less" )
+
+```
+
+ W oparciu o wynik testu zasadne jest odrzucenie hipotezy zerowej i przyjęcie hipotezy alternatywnej. Wiek samochodów w grupie osób, które zginęły w wypadkach jest wyższy (rocznik jest starszy), niż w grupie osób, które przeżyły wypadek.
+
+#Hipoteza 2
+h0: Kobiety tak samo często lub częściej umierają w wypadkach samochodowych niż mężczyźni. (gdy już dojdzie do wypadku)
+
+hA: Kobiety rzadziej umierają w wypadkach samochodowych niż mężczyźni. (gdy już dojdzie do wypadku)
+
+```{r}
+CarCrashDeathK <- filter(CarCrash, plec == 'f', smierc=="dead")
+CarCrashDeathM <- filter(CarCrash, plec == 'm', smierc == "dead")
+
+ulamekSmiertelnosci <- 403/8651
+liczbaKobiet <- count(CarCrash, plec == 'f') #liczę liczbe mezczyzn i kobiet
+zaobserwowane = c(169,234)
+oczekiwane = c(4020*403/8651,4631*403/8651)
+
+# obliczam statystykę testową chi kwadrat 
+chi_kw = sum((zaobserwowane - oczekiwane)**2/oczekiwane)
+
+# za pomocą dystrybuanty  wyznaczam
+# prawdopodobieństwo uzyskania takiego
+# lub bardziej skrajnego wyniku
+pchisq(chi_kw, 1, lower.tail = FALSE)
+
+```
+
+ W oparciu o wynik testu zasadne jest przyjęcie hipotezy zerowej (przyejliśmy afle = 0,05). Kobiety tak samo często lub częściej umierają w wypadkach samochodowych niż mężczyźni. (gdy już dojdzie do wypadku). Wynik jest jednak na poziomie tendencji statystycznej p = 0.07.
+
+
+ 
+# Hipoteza 3
+
+h0: Wiek użytkownika samochodu nie jest skoroelowany z wiekiem samochodu lub jest z nim skorelowany ujemnie
+
+hA: Wiek użytkownika samochodu jest dodatnio skorelowany z wiekiem samochodu.
+
+
+```{r}
+cor.test(x =wiek, y = wiekKierowcy)
+```
+W oparciu o wynik testu na istotność współczynika korelacji r - Pearsona przyjmujemy h0. Wynik testu nie okazał się istotny statystycznie.
