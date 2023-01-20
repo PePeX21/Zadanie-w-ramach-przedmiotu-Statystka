@@ -1,0 +1,1 @@
+# Zadanie-z-statystyki-w-ramach-studiow
